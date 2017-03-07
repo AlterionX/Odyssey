@@ -1,0 +1,28 @@
+ChatArea extends JTextArea
+
+SPButton extends JButton
+	boolean pausing
+
+StopButton extends JButton
+
+
+StartButton extends JButton
+
+
+MainPanel extends JPanel
+
+
+ButPanel extends JPanel
+
+
+PrintPanel extends JPanel
+	
+
+SelecPanel extends JPanel
+	
+
+NameCBox extends JComboBox
+
+
+ConvCBox extends JComboBox
+
