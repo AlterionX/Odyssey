@@ -1,69 +1,102 @@
 package gui;
 
+import gui.screencomp.ButtonPanel;
+import gui.screencomp.PrintPanel;
+import gui.screencomp.LogSelectionPanel;
+
+import javax.swing.*;
 import java.awt.GridBagLayout;
 
-import gui.screencomp.ButPanel;
-import gui.screencomp.PrintPanel;
-import gui.screencomp.SelecPanel;
-
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
-
 /**
- * 
  * @author Benjamin Xu
- *
  */
-public class OdysseyChatLogGUI implements Runnable{
-	
-	public boolean pausing;
-	public boolean stop;
-	public boolean autoPause = false;
-	
-	@Override
-	/**
-	 * Runs the class.
-	 */
-	public void run() {
-		mainWindow();
-	}
-	
-	/**
-	 * Sets the main window: the only one.
-	 */
-	private void mainWindow() {
-		JFrame frame = new JFrame();
-		JPanel panel = new JPanel(new GridBagLayout());
-		// TODO Auto-generated method stub
-		try {
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (UnsupportedLookAndFeelException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.setResizable(false);
-		frame.setTitle("An Odyssey into Time: Reflections on Homer");
-		frame.add(panel);
-		
-		panel.add(new SelecPanel());
-		panel.add(new PrintPanel());
-		panel.add(new ButPanel());
-		
-		frame.pack();
-		frame.setBounds(300, 50, 500, 500);
-		frame.setVisible(true);
-	}
+public class OdysseyChatLogGUI implements Runnable {
+
+    private boolean pause = true;
+    private boolean auto = false;
+
+    private JFrame baseWindow;
+    private JPanel basePane;
+    private JPanel mainBasePanel;
+
+    //Constructor, builds screens
+    public OdysseyChatLogGUI() {
+        baseWindow = new JFrame();
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            System.out.println("Issues with the system look and feel.");
+            e.printStackTrace();
+            try {
+                UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            } catch (Exception e2) {
+                System.out.println("Look and feel error with the defaults.");
+                e2.printStackTrace();
+                System.exit(-1);
+            }
+        }
+        //Basic window information.
+        baseWindow.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        baseWindow.setResizable(false);
+        baseWindow.setTitle("An Odyssey into Time: Reflections on Homer");
+
+        basePane = new JPanel();
+        baseWindow.setContentPane(basePane);
+        setUpScreens();
+    }
+
+    //Window Setups
+    private void setUpScreens() {
+        setUpMainScreen();
+    }
+    private void setUpMainScreen() {
+        //Add base panel.
+        mainBasePanel = new JPanel(new GridBagLayout());
+        //Add the three sections of the chat.
+        mainBasePanel.add(new LogSelectionPanel(this), GUIHelper.getGBC(1,1,1,1));
+        mainBasePanel.add(new PrintPanel(this),
+                GUIHelper.getGBC(1,2,5,1));
+        mainBasePanel.add(new ButtonPanel(this), GUIHelper.getGBC(1,7,1,1));
+    }
+
+    private void resetBase() {
+        basePane.removeAll();
+    }
+
+    //Window displays
+    private void displayMainScreen() {
+        resetBase();
+        basePane.add(mainBasePanel);
+        baseWindow.setBounds(300, 50, 500, 500);
+        baseWindow.setVisible(true);
+    }
+
+    //Message display settings
+    public void setAuto(boolean auto) {
+        this.auto = auto;
+    }
+    public boolean isAuto() {
+        return auto;
+    }
+    public void setPause(boolean pause) {
+        if (ConversationManager.getCurrentConversation() != null) {
+            this.pause = pause;
+        } else {
+            halt();
+        }
+    }
+    public boolean isPause() {
+        return pause;
+    }
+    public void halt() {
+        setPause(true);
+        ConversationManager.resetCurrent();
+    }
+
+    //Make runnable from launcher
+    @Override
+    public void run() {
+        displayMainScreen();
+    }
+
 }

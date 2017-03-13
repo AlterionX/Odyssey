@@ -1,0 +1,21 @@
+Chat loc (.oclog) format:
+
+//Header:
+CONVO_NAME
+Speakers:SPEAKER_NAME1\tSPEAKER_NAME2
+DEFAULT_DELAY
+//Body (repests):
+DELAY_TIME:SPEAKER_NUM:CONVO_LINE //if left blank, is a system message
+
+
+History log (.llst) format:
+//Body (repeats):
+LOG_FILE_NAME
+
+Category (.oplist) format:
+//Body (repeats):
+OPTION_STRING:OPTION_FILE_NAME
+
+Option (.option) format:
+//Body (repeats):
+LOG_FILE_NAME
