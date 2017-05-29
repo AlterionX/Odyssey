@@ -1,49 +1,45 @@
 package gui.screencomp;
 
 import gui.GUIHelper;
-import gui.OdysseyChatLogGUI;
+import gui.OdysseyGUI;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 @SuppressWarnings("serial")
 public class ButtonPanel extends JPanel {
-    private JButton spButton = new JButton("Start");
-    private JButton stopButton = new JButton("Halt");
+    private JButton resetButton = new JButton("Reset");
     private JCheckBox autoCheckBox = new JCheckBox("Auto");
 
-    private OdysseyChatLogGUI parent;
+    private OdysseyGUI parent;
+    private boolean auto = false;
 
-    public ButtonPanel(OdysseyChatLogGUI parent) {
+    public ButtonPanel(OdysseyGUI parent) {
         super(new GridBagLayout());
 
         this.parent = parent;
 
-        this.add(autoCheckBox, GUIHelper.getGBC(2, 0));
-        this.add(spButton, GUIHelper.getGBC(0, 0));
-        this.add(stopButton, GUIHelper.getGBC(1, 0));
+        this.add(autoCheckBox, GUIHelper.getGBC(0, 0));
+        this.add(resetButton, GUIHelper.getGBC(1, 0));
 
-        autoCheckBox.addItemListener(e -> toggleAuto());
-        spButton.addActionListener(e -> togglePause());
-        stopButton.addActionListener(e -> stopReset());
+        resetButton.addActionListener(e -> stopReset());
     }
 
-    private void toggleAuto() {
+    public void toggleAuto() {
         System.out.println("Auto check box toggled.");
-        parent.setAuto(autoCheckBox.isSelected());
+        setAuto(!getAuto());
     }
-    private void togglePause() {
-        System.out.println("Start/Pause button pressed.");
-        spButton.setText(parent.isPause()? "Start":"Pause");
-        parent.setPause(!parent.isPause());
+    public void setAuto(boolean auto) {
+        System.out.println(String.format("Auto check box set to %b.", auto));
+        this.auto = auto;
+        autoCheckBox.setSelected(getAuto());
+    }
+    public boolean getAuto() {
+        return auto;
     }
     private void stopReset() {
         System.out.println("Stop pressed.");
-        spButton.setText("Start");
+        auto = false;
         autoCheckBox.setSelected(false);
-        parent.setPause(true);
-        parent.setAuto(false);
     }
 }

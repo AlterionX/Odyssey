@@ -1,118 +1,110 @@
 package gui;
 
+import com.sun.javafx.UnmodifiableArrayList;
 import loghandle.ChatLog;
 import loghandle.ChatLogEntry;
+import loghandle.ChatLogManager;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-public class ConversationManager {
-
-    private static Map<String, String> nameToPath = new HashMap<>();
-    private static List<String> categories = ConversationManager.fetchCategories();
-    private static List<String> fetchCategories() {
-        return ChatLog.getCategoryNames();
-    }
-    private static int selectedCategory = 0;
-    private static List<String> conversations = new ArrayList<>();
-    static {
-        setCategory(0);
+public final class ConversationManager {
+    //List of categories will never change
+    private final UnmodifiableArrayList<String> categories;
+    public List<String> getCategoryNames() {
+        return categories;
     }
 
-    private static ChatLog currentLog = null;
-    private static int lastSpeaker = -1;
-    private static ChatLogEntry currentEntry = null;
-    private static int nextEntry = 0;
+    //For modifying selected categories
+    private int selectedCategory = -1;
+    private final Object categoryManagementLock = new Object();
+    private List<String> convoList = new ArrayList<>();
+    private Map<String, String> nameToPath = new HashMap<>();
 
-    private ConversationManager() {}
-
-    public static void reset() {
-        resetCurrent();
-        setCategory(0);
-    }
-    public static void resetCurrent() {
-        currentLog = null;
-        lastSpeaker = -1;
-        currentEntry = null;
-        nextEntry = 0;
+    ConversationManager() {
+        List<String> stuff = ChatLogManager.getCategoryNames();
+        categories = new UnmodifiableArrayList<>(
+                stuff.toArray(new String[]{}), stuff.size()
+        );
+        setConvoListFromCategory(0);
     }
 
-    public static List<String> setCategory(int category) {
-        if (getSelectedCategory() != category) {
-            conversations.clear();
-            setSelectedCategory(category);
-            List<String> conversationsPathList = ChatLog.getCategoryConvos(categories.get(category));
-            for (int i = 0; i < conversationsPathList.size(); i++) {
-                conversations.add(ChatLog.getInstance(conversationsPathList.get(i), false).getConvoName());
-                if (!nameToPath.containsKey(conversations.get(i))) {
-                    nameToPath.put(conversationsPathList.get(i), conversations.get(i));
+    //For handling scrolling
+    private final Object printingManagementLock = new Object();
+    private Deque<ChatLog> logSequence = new ArrayDeque<>();
+    private int lastSpeaker = -1;
+    private int nextEntry = 0;
+    private ChatLog nextLog;
+
+    //General category management
+    public List<String> setConvoListFromCategory(int category) {
+        synchronized (categoryManagementLock) {
+            if (getSelectedCategory() != category) {
+                convoList.clear();
+                setSelectedCategory(category);
+                List<String> conversationsPathList = ChatLogManager.getCategoryConvos(categories.get(category));
+                for (int i = 0; i < conversationsPathList.size(); i++) {
+                    convoList.add(ChatLogManager.getInstance(conversationsPathList.get(i), false).getConvoName());
+                    if (!nameToPath.containsKey(convoList.get(i))) {
+                        nameToPath.put(conversationsPathList.get(i), convoList.get(i));
+                    }
                 }
             }
         }
-        return conversations;
+        return convoList;
     }
-    public static int getSelectedCategory() {
+    public List<String> getConvoList() {
+        synchronized (categoryManagementLock) {
+            return convoList;
+        }
+    }
+    public void resetCategoryState() {
+        setConvoListFromCategory(0);
+    }
+    private int getSelectedCategory() {
         return selectedCategory;
     }
-    public static void setSelectedCategory(int selectedCategory) {
-        ConversationManager.selectedCategory = selectedCategory;
+    private void setSelectedCategory(int selectedCategory) {
+        this.selectedCategory = selectedCategory;
     }
 
-    public static List<String> getCategoryNames() {
-        return categories;
-    }
-    public static List<String> getCurrentCategoryConversationNames() {
-        return conversations;
-    }
-    public static void getConversationFromName(String name) {
-        if (!nameToPath.containsKey(name)) {
-            System.out.println("Not loaded.");
-            return;
-        }
-        currentLog = ChatLog.getInstance(nameToPath.get(name), true);
-    }
-
-    public static ChatLog getCurrentConversation() {
-        return currentLog;
-    }
-
-    //Printing and fetching things phase.
-    public static void primeLog() {
-        if (currentLog == null || currentLog.getLineCount() == 0) {
-            throw new IllegalStateException("No conversation set for iteration.");
-        }
-        fetchNextEntry();
-    }
-    public void printCurrentAndFindNextWithDelay() {
-        //TODO? Might put this into the ChatArea/PrintPanel
-    }
-    public int getCurrentDelay() {
-        return currentEntry.delay();
-    }
-    public static String getCurrentOuput() {
-        StringBuilder sb = new StringBuilder();
-        if (lastSpeaker != currentEntry.speaker()) {
-            sb.append(currentLog.getSpeaker(currentEntry.speaker()));
-        }
-        sb.append(currentEntry.text());
-        return sb.toString();
-    }
-    private static void fetchNextEntry() {
-        if (currentEntry != null) {
-            lastSpeaker = currentEntry.speaker();
-        }
-        if (nextEntry != currentLog.getLineCount()) {
-            currentEntry = currentLog.getLine(nextEntry);
-            nextEntry++;
+    //General feeder management
+    void advance() {
+        synchronized (printingManagementLock) {
+            while (!(hasNextEntry() || nextLog == null)) {
+                nextLog = getNextConvo();
+            }
         }
     }
-    public static String getCurrentOuputAndFetchNextEntry() {
-        String output = getCurrentOuput();
-        fetchNextEntry();
-        return output;
+    boolean hasNextEntry() {
+        synchronized (printingManagementLock) {
+            return nextEntry < nextLog.getLineCount();
+        }
     }
-
-    //Do something here
-} 
+    ChatLogEntry getNextEntry() {
+        synchronized (printingManagementLock) {
+            ChatLogEntry cle = nextLog.getLine(nextEntry++);
+            lastSpeaker = cle.getSpeaker();
+            return cle;
+        }
+    }
+    //Everything beyond this point should be relatively thread-safe
+    private ChatLog getNextConvo() {
+        synchronized (printingManagementLock) {
+            lastSpeaker = -1;
+            return (nextLog = logSequence.poll());
+        }
+    }
+    private boolean hasNextConvo() {
+        synchronized (printingManagementLock) {
+            return logSequence.peek() != null;
+        }
+    }
+    public void resetPrintingState() {
+        synchronized (printingManagementLock) {
+            logSequence.clear();
+            lastSpeaker = -1;
+            nextEntry = 0;
+            nextLog = null;
+        }
+    }
+}
