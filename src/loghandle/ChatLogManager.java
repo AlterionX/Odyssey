@@ -24,12 +24,12 @@ public class ChatLogManager {
     /**
      * A list of the paths to records.
      */
-    private static List<String> recordsList = fetchRecordList();
+    private static final List<String> recordsList = fetchRecordList();
     /**
      * A map from a category's name to the path to the category file as well as the list of conversation files
      * within the category.
      */
-    private static Map<String, Pair<String, List<String>>> CATEGORY_DATA = fetchCategoryList(); //Try for immutable later
+    private static final Map<String, Pair<String, List<String>>> CATEGORY_DATA = fetchCategoryList(); //Try for immutable later
     //These two are only called here, on launch, and are private. Synchronization unecessary
     /**
      * Get the list of list of records
@@ -95,7 +95,7 @@ public class ChatLogManager {
     /**
      * List of initialised conversations.
      */
-    private static HashMap<String, ChatLog> initializedLogs = new HashMap<>();
+    private static final HashMap<String, ChatLog> initializedLogs = new HashMap<>();
 
 
     //General access
@@ -116,39 +116,8 @@ public class ChatLogManager {
     public static List<String> getCategoryConvos(String categoryName) {
         return CATEGORY_DATA.get(categoryName).getValue();
     }
-    /**
-     * Get the associated index of a provided path, within the HOME_DIR.
-     * @param path The path to search for.
-     * @return The index of the path within the path. -1 if non-existent.
-     */
-    public static int getPathIndex(String path) {
-        String realPath = null;
-        try {
-            realPath = Paths.get(HOME_DIR).resolve(path).toRealPath().toString();
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(-1);
-        }
-        return recordsList.indexOf(realPath);
-    }
 
     //Chat log access
-    /**
-     * Gets an instance based on the index of the log in the records list.
-     * @param logNum The index of the provided log.
-     * @return The log matching the provided index.
-     */
-    public static ChatLog getInstance(int logNum) {
-        if (logNum < 0) {
-            throw new IllegalStateException("Not allowed to access conversation logs with negative numbers. These do not exist.");
-        }
-        synchronized (recordsLock) {
-            if (logNum >= recordsList.size()) {
-                throw new IllegalStateException("Not allowed to access conversation logs that do not exist. Obviously.");
-            }
-        }
-        return internalInstanceFetch(recordsList.get(logNum));
-    }
     /**
      * Get a conversation based on the path to that conversation.
      * @param pathPart The path to the conversation

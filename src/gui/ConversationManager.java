@@ -17,8 +17,15 @@ public final class ConversationManager {
     //For modifying selected categories
     private int selectedCategory = -1;
     private final Object categoryManagementLock = new Object();
-    private List<String> convoList = new ArrayList<>();
-    private Map<String, String> nameToPath = new HashMap<>();
+    private final List<String> convoList = new ArrayList<>();
+    private final Map<String, String> nameToPath = new HashMap<>();
+
+    //For handling printing
+    private final Object printingManagementLock = new Object();
+    private final Deque<ChatLog> logSequence = new ArrayDeque<>();
+    private int lastSpeaker = -1;
+    private int nextEntry = 0;
+    private ChatLog nextLog;
 
     ConversationManager() {
         List<String> stuff = ChatLogManager.getCategoryNames();
@@ -28,49 +35,52 @@ public final class ConversationManager {
         setConvoListFromCategory(0);
     }
 
-    //For handling scrolling
-    private final Object printingManagementLock = new Object();
-    private Deque<ChatLog> logSequence = new ArrayDeque<>();
-    private int lastSpeaker = -1;
-    private int nextEntry = 0;
-    private ChatLog nextLog;
-
-    //General category management
+    //General category management, only one can happen at a time
     public List<String> setConvoListFromCategory(int category) {
         synchronized (categoryManagementLock) {
-            if (getSelectedCategory() != category) {
+            if (selectedCategory != category) {
                 convoList.clear();
-                setSelectedCategory(category);
+                selectedCategory = category;
                 List<String> conversationsPathList = ChatLogManager.getCategoryConvos(categories.get(category));
                 for (int i = 0; i < conversationsPathList.size(); i++) {
                     convoList.add(ChatLogManager.getInstance(conversationsPathList.get(i), false).getConvoName());
                     if (!nameToPath.containsKey(convoList.get(i))) {
-                        nameToPath.put(conversationsPathList.get(i), convoList.get(i));
+                        nameToPath.put(convoList.get(i), conversationsPathList.get(i));
                     }
                 }
             }
         }
         return convoList;
     }
-    public List<String> getConvoList() {
-        synchronized (categoryManagementLock) {
-            return convoList;
+
+    //General feeder management, only one can happen at a time
+    public void primeLogs(int selectedItem) {
+        synchronized (printingManagementLock) {
+            if (selectedItem == 0) {
+                for (String name : convoList) {
+                    System.out.println(nameToPath);
+                    if (nameToPath.containsKey(name)) {
+                        logSequence.add(ChatLogManager.getInstance(nameToPath.get(name), false));
+                    }
+                }
+            } else {
+                //Get only selected item
+                logSequence.add(ChatLogManager.getInstance(nameToPath.get(convoList.get(selectedItem)), false));
+            }
+            advance();
         }
     }
-    public void resetCategoryState() {
-        setConvoListFromCategory(0);
+    public void resetPrintingState() {
+        synchronized (printingManagementLock) {
+            logSequence.clear();
+            lastSpeaker = -1;
+            nextEntry = 0;
+            nextLog = null;
+        }
     }
-    private int getSelectedCategory() {
-        return selectedCategory;
-    }
-    private void setSelectedCategory(int selectedCategory) {
-        this.selectedCategory = selectedCategory;
-    }
-
-    //General feeder management
     void advance() {
         synchronized (printingManagementLock) {
-            while (!(hasNextEntry() || nextLog == null)) {
+            while (hasNextConvo() && (nextLog == null || !hasNextEntry())) {
                 nextLog = getNextConvo();
             }
         }
@@ -99,12 +109,10 @@ public final class ConversationManager {
             return logSequence.peek() != null;
         }
     }
-    public void resetPrintingState() {
+
+    boolean hasLogs() {
         synchronized (printingManagementLock) {
-            logSequence.clear();
-            lastSpeaker = -1;
-            nextEntry = 0;
-            nextLog = null;
+            return !logSequence.isEmpty() || nextLog != null;
         }
     }
 }

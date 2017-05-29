@@ -6,17 +6,15 @@ import gui.OdysseyGUI;
 
 import javax.swing.*;
 import java.awt.GridBagLayout;
-import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("serial")
 public class LogSelectionPanel extends JPanel {
-    private JComboBox<String> categoryComboBox;
-    private JComboBox<String> conversationComboBox;
-    private JButton loadSelectedLogs;
+    private final JComboBox<String> categoryComboBox;
+    private final JComboBox<String> conversationComboBox;
 
-    private OdysseyGUI parent;
-    private ConversationManager cMan;
+    private final OdysseyGUI parent;
+    private final ConversationManager cMan;
 
     public LogSelectionPanel(OdysseyGUI parent, ConversationManager cman) {
         super(new GridBagLayout());
@@ -26,7 +24,10 @@ public class LogSelectionPanel extends JPanel {
         //Make components
         categoryComboBox = new JComboBox<>(new DefaultComboBoxModel<String>());
         conversationComboBox = new JComboBox<>(new DefaultComboBoxModel<String>());
-        loadSelectedLogs = new JButton("Load Log(s)");
+        JButton loadSelectedLogs = new JButton("Load Log(s)");
+
+        //Stop collision with my spacebar
+        loadSelectedLogs.getInputMap().put(KeyStroke.getKeyStroke("SPACE"), "none");
 
         //Add components
         this.add(categoryComboBox, GUIHelper.getGBC(2, 2, 1, 2));
@@ -45,22 +46,15 @@ public class LogSelectionPanel extends JPanel {
 
     private void loadLogs() {
         System.out.println("Loading logs!");
-        ArrayList<String> newConvos = new ArrayList<>();
-        if (conversationComboBox.getSelectedIndex() == 0) {
-            newConvos.addAll(cMan.getConvoList());
-        } else {
-            newConvos.add(cMan.getConvoList().get(conversationComboBox.getSelectedIndex() - 1));
-        }
-        System.out.println("Adding logs: ");
-        System.out.println("\t" + newConvos.toString());
         parent.requestHalt();
         cMan.resetPrintingState();
+        //No change to category
+        cMan.primeLogs(conversationComboBox.getSelectedIndex());
     }
     private void updateNames() {
         System.out.println("Updating names!");
         conversationComboBox.removeAllItems();
         conversationComboBox.addItem("All");
-        cMan.resetCategoryState();
         List<String> names = cMan.setConvoListFromCategory(categoryComboBox.getSelectedIndex());
         for (String name: names) {
             conversationComboBox.addItem(name);

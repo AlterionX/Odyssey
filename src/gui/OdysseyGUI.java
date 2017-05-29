@@ -13,14 +13,13 @@ import java.awt.event.*;
  * @author Benjamin Xu
  */
 public class OdysseyGUI implements Runnable {
-    private ConversationManager cMan = new ConversationManager();
+    private final ConversationManager cMan = new ConversationManager();
 
 
     private JFrame baseWindow;
     private JPanel basePane;
 
     private JPanel mainScreen;
-    private LogSelectionPanel mainScreenLog;
     private ButtonPanel mainScreenButton;
     private PrintPanel mainScreenPrintArea;
 
@@ -31,12 +30,9 @@ public class OdysseyGUI implements Runnable {
     OdysseyGUI() {
         frameSetup();
         setUpScreens();
-        addEventListeners();
         addKeyBindings();
     }
 
-    //Listeners
-    private void addEventListeners() {}
     private void addKeyBindings() {
         InputMap inFrameInput = basePane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
         ActionMap actions = basePane.getActionMap();
@@ -48,6 +44,11 @@ public class OdysseyGUI implements Runnable {
                 System.out.println("Advancing script!");
                 SwingUtilities.invokeLater(() -> {
                     System.out.println("Advancing the conversation one step at a time.");
+                    mainScreenButton.setAuto(false);
+                    cMan.advance();
+                    if (cMan.hasNextEntry()) {
+                        mainScreenPrintArea.append(cMan.getNextEntry());
+                    }
                 });
             }
         });
@@ -56,14 +57,7 @@ public class OdysseyGUI implements Runnable {
             @Override
             public void actionPerformed(ActionEvent e) {
                 System.out.println("Launching!");
-                SwingUtilities.invokeLater(() -> {
-                    System.out.println("Launched the conversation.");
-                    mainScreenButton.setAuto(false);
-                    cMan.advance();
-                    if (cMan.hasNextEntry()) {
-                        mainScreenPrintArea.append(cMan.getNextEntry());
-                    }
-                });
+                SwingUtilities.invokeLater(() -> System.out.println("Launched the conversation."));
             }
         });
         inFrameInput.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK, false), "reset");
@@ -129,9 +123,9 @@ public class OdysseyGUI implements Runnable {
         //Add base panel.
         mainScreen = new JPanel(new GridBagLayout());
         //Add the three sections of the chat.
-        mainScreenLog = new LogSelectionPanel(this, cMan);
+        LogSelectionPanel mainScreenLog = new LogSelectionPanel(this, cMan);
         mainScreen.add(mainScreenLog, GUIHelper.getGBC(1,1,1,1));
-        mainScreenPrintArea = new PrintPanel(this);
+        mainScreenPrintArea = new PrintPanel();
         mainScreen.add(mainScreenPrintArea, GUIHelper.getGBC(1,2,5,1));
         mainScreenButton = new ButtonPanel(this);
         mainScreen.add(mainScreenButton, GUIHelper.getGBC(1,7,1,1));
@@ -155,7 +149,7 @@ public class OdysseyGUI implements Runnable {
         synchronized (autoLock) {
             if (autoThread == null) {
                 autoThread = new Thread(new AutoPrinter());
-                autoThread.run();
+                autoThread.start();
             }
         }
     }
@@ -183,6 +177,11 @@ public class OdysseyGUI implements Runnable {
 
         @Override
         public void run() {
+            if (!cMan.hasLogs()) {
+                System.out.println("No loaded logs!");
+                requestHalt();
+                return;
+            }
             while (cMan.hasNextEntry()) {
                 ChatLogEntry cle = cMan.getNextEntry();
                 //Wait for however long
@@ -190,10 +189,12 @@ public class OdysseyGUI implements Runnable {
                     Thread.sleep(cle.getDelay());
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                    System.out.println("Interrupted current thread.");
                     Thread.currentThread().interrupt();
+                    break;
                 }
                 //Print, proceed
-                mainScreenPrintArea.append(cle);
+                SwingUtilities.invokeLater(() -> mainScreenPrintArea.append(cle));
                 cMan.advance();
             }
             requestHalt();

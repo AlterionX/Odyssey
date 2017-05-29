@@ -2,7 +2,7 @@ package gui;
 
 import javax.swing.*;
 
-public class OdysseyGUILauncher {
+class OdysseyGUILauncher {
 
     /**
      * Runs the program.

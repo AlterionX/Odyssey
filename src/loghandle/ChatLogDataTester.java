@@ -2,8 +2,8 @@ package loghandle;
 
 import java.util.List;
 
-public class ChatLogDataTester {
-    private static boolean[] test = {
+class ChatLogDataTester {
+    private static final boolean[] test = {
             false,
             false,
             false,

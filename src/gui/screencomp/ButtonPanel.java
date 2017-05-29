@@ -8,10 +8,9 @@ import java.awt.*;
 
 @SuppressWarnings("serial")
 public class ButtonPanel extends JPanel {
-    private JButton resetButton = new JButton("Reset");
-    private JCheckBox autoCheckBox = new JCheckBox("Auto");
+    private final JCheckBox autoCheckBox = new JCheckBox("Auto");
 
-    private OdysseyGUI parent;
+    private final OdysseyGUI parent;
     private boolean auto = false;
 
     public ButtonPanel(OdysseyGUI parent) {
@@ -20,9 +19,14 @@ public class ButtonPanel extends JPanel {
         this.parent = parent;
 
         this.add(autoCheckBox, GUIHelper.getGBC(0, 0));
+        JButton resetButton = new JButton("Reset");
         this.add(resetButton, GUIHelper.getGBC(1, 0));
 
         resetButton.addActionListener(e -> stopReset());
+        autoCheckBox.addActionListener(e -> {
+            boolean hi = autoCheckBox.isSelected();
+            setAuto(hi, true);
+        });
     }
 
     public void toggleAuto() {
@@ -30,16 +34,25 @@ public class ButtonPanel extends JPanel {
         setAuto(!getAuto());
     }
     public void setAuto(boolean auto) {
+        setAuto(auto, false);
+    }
+    private void setAuto(boolean auto, boolean external) {
         System.out.println(String.format("Auto check box set to %b.", auto));
         this.auto = auto;
-        autoCheckBox.setSelected(getAuto());
+        if (!external) autoCheckBox.setSelected(getAuto());
+        if (getAuto()) {
+            parent.createAndStartAutoThread();
+        } else {
+            parent.interruptAutoThread();
+        }
     }
-    public boolean getAuto() {
+
+    private boolean getAuto() {
         return auto;
     }
     private void stopReset() {
         System.out.println("Stop pressed.");
         auto = false;
-        autoCheckBox.setSelected(false);
+        setAuto(false);
     }
 }
